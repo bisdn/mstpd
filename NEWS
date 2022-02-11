@@ -1,6 +1,20 @@
 mstpd: Multiple Spanning Tree Protocol Daemon
 =============================================
 
+Version: 0.1.0+bisdn1
+---------------------------------------------
+-  properly unblock ports when the bridge goes up
+-  use sydep_if_data* as argument for fill_vlan_table
+-  clean up vlan_notify function
+-  set bridge stp state to FORWARDING when bringing ports up
+-  don't try to access VID 0
+-  replace naive driver_dep with proper per vlan state setting
+-  linux_pvstate: add a driver for setting linux per vlan stp states
+  - Jonas Gorski <jonas.gorski@bisdn.de>
+
+-  libnetlink: Add helper to add a group via setsockopt
+  - David Ahern <dsahern@gmail.com>
+
 Version: 0.1.0
 ---------------------------------------------
 - libnetlink changes to start supporting Linux per-VLAN STP
