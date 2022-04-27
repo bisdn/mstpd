@@ -1,3 +1,9 @@
+mstpd (0.1.0+bisdn2) unstable; urgency=medium
+
+  * drop python2 dependency in favor of python3
+
+ -- Jan Klare  <jan.klare@bisdn.de>  Tue, 27 Apr 2022 13:48:00 +0100
+
 mstpd (0.1.0+bisdn1) unstable; urgency=medium
 
   * apply everything until upstream 0.1.0 (which was never released for
