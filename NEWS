@@ -1,6 +1,10 @@
 mstpd: Multiple Spanning Tree Protocol Daemon
 =============================================
 
+Version: 0.1.0+bisdn2
+---------------------------------------------
+- drop python2 dependency in favor of python3
+
 Version: 0.1.0+bisdn1
 ---------------------------------------------
 -  properly unblock ports when the bridge goes up
