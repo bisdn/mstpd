@@ -1,3 +1,9 @@
+mstpd (0.1.0+bisdn3) unstable; urgency=medium
+
+  * brmon: do not use the monitor socket for getting the vlan table
+
+ -- Jonas Gorski  <jonas.gorski@bisdn.de>  Fri Jul 15 17:06:18 2022 +0200
+
 mstpd (0.1.0+bisdn2) unstable; urgency=medium
 
   * drop python2 dependency in favor of python3
