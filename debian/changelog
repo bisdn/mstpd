@@ -1,3 +1,9 @@
+mstpd (0.1.0+bisdn4) unstable; urgency=medium
+
+  * bridge_track: only set ports to forwarding when the bridge is up
+
+ -- Jonas Gorski <jonas.gorski@bisdn.de>  Wed Oct 26 11:55:06 2022 +0200
+
 mstpd (0.1.0+bisdn3) unstable; urgency=medium
 
   * brmon: do not use the monitor socket for getting the vlan table
