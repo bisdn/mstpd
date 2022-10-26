@@ -1,6 +1,10 @@
 mstpd: Multiple Spanning Tree Protocol Daemon
 =============================================
 
+Version: 0.1.0+bisdn4
+- bridge_track: only set ports to forwarding when the bridge is up
+  - Jonas Gorski <jonas.gorski@bisdn.de>
+
 Version: 0.1.0+bisdn3
 ---------------------------------------------
 - brmon: do not use the monitor socket for getting the vlan table
