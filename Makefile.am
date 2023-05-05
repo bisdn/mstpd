@@ -11,7 +11,8 @@ mstpd_SOURCES = \
 	include/uapi/linux/if_bridge.h include/uapi/linux/rtnetlink.h
 
 mstpctl_SOURCES = \
-	ctl_main.c ctl_socket_client.c ctl_socket_client.h ctl_functions.h
+	ctl_main.c ctl_socket_client.c ctl_functions.c ctl_socket_client.h \
+	ctl_functions.h
 
 mstpd_CFLAGS = \
 	-Os -Wall -D_REENTRANT -D__LINUX__ -I. \
