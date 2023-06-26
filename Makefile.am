@@ -85,7 +85,7 @@ etcdest=$(DESTDIR)$(sysconfdir)
 docdest=$(DESTDIR)$(docdir)
 bashcompdest=$(DESTDIR)$(bashcompletiondir)
 systemdunitdest=$(DESTDIR)$(systemdunitdir)
-nmlibdest=$(DESTDIR)$(nmlibdir)
+nmlibdest=$(DESTDIR)$(nmdispatcherdir)
 
 if ENABLE_INSTALL_IFUPDOWN_SCRIPTS
 IFUPDOWN_SCRIPT_INSTALL_CMDS = \
@@ -99,15 +99,18 @@ if HAVE_SYSTEMD
 systemdunit_DATA = utils/mstpd.service
 endif
 
+if HAVE_NETWORKMANAGER
+nmdispatcher_SCRIPTS = utils/nm-dispatcher
+endif
+
 install-exec-hook:
 	ln -sf $(sbindir)/bridge-stp $(sbindest)/mstp_restart
 	ln -sf $(sbindir)/bridge-stp $(utilsdest)/mstpctl_restart_config
 	$(IFUPDOWN_SCRIPT_INSTALL_CMDS)
 	$(MKDIR_P) $(bashcompdest)
 	$(INSTALL_DATA) $(srcdir)/utils/bash_completion $(bashcompdest)/mstpctl
-	if [ -d $(nmlibdir) ]; then \
-	  $(MKDIR_P) $(nmlibdest) ; \
-	  $(INSTALL_SCRIPT) $(top_builddir)/utils/nm-dispatcher $(nmlibdest)/45-mstpd ; \
+	if [ -n "$(nmdispatcherdir)" ]; then \
+	  mv $(nmlibdest)/nm-dispatcher $(nmlibdest)/45-mstpd ; \
 	fi
 	$(MKDIR_P) $(docdest)
 	$(INSTALL_DATA) $(srcdir)/README.md $(docdest)/README

@@ -78,6 +78,21 @@ AS_IF([test "x$with_systemdunitdir" != "xno"],
       [AC_SUBST([systemdunitdir], [$with_systemdunitdir])])
 AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$with_systemdunitdir" != "xno"])
 
+AC_ARG_WITH([nmdispatcherdir],
+     [AS_HELP_STRING([--with-nmdispatcherdir=DIR], [Directory for NetworkManager dispatcher files.])],,
+     [with_nmdispatcherdir=default])
+AS_IF([test "x$with_nmdispatcherdir" = "xdefault"],[
+     def_nmdispatcherdir=$($PKG_CONFIG --variable=plugindir NetworkManager)
+
+     AS_IF([test "x$def_nmdispatcherdir" = "x"],
+   [AS_IF([test "x$with_nmdispatcherdir" = "xdefault"],
+    [AC_MSG_ERROR([NetworkManager support requested but pkg-config unable to query NetworkManager package])])
+    with_nmdispatcherdir=no],
+   [with_nmdirpatchdir="$def_nmdispatcherdir/dispatcher.d"])])
+AS_IF([test "x$with_nmdispatcherdir" != "xno"],
+      [AC_SUBST([nmdispatcherdir], [$with_nmdispatcherdir])])
+AM_CONDITIONAL([HAVE_NETWORKMANAGER], [test "x$with_nmdispatcherdir" != "xno"])
+
 # Define PACKAGE_BUILD
 PACKAGE_BUILD=`git log --pretty=format:'%h' -n 1`
 AC_SUBST(PACKAGE_BUILD)
