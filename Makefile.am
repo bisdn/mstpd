@@ -95,16 +95,16 @@ IFUPDOWN_SCRIPT_INSTALL_CMDS = \
 	ln -sf $(utilsexecdir)/ifupdown.sh $(etcdest)/network/if-post-down.d/mstpctl
 endif
 
+if HAVE_SYSTEMD
+systemdunit_DATA = utils/mstpd.service
+endif
+
 install-exec-hook:
 	ln -sf $(sbindir)/bridge-stp $(sbindest)/mstp_restart
 	ln -sf $(sbindir)/bridge-stp $(utilsdest)/mstpctl_restart_config
 	$(IFUPDOWN_SCRIPT_INSTALL_CMDS)
 	$(MKDIR_P) $(bashcompdest)
 	$(INSTALL_DATA) $(srcdir)/utils/bash_completion $(bashcompdest)/mstpctl
-	if [ -n "$(systemdunitdir)" ]; then \
-	  $(MKDIR_P) $(systemdunitdest) ; \
-	  $(INSTALL_DATA) $(top_builddir)/utils/mstpd.service $(systemdunitdest) ; \
-	fi
 	if [ -d $(nmlibdir) ]; then \
 	  $(MKDIR_P) $(nmlibdest) ; \
 	  $(INSTALL_SCRIPT) $(top_builddir)/utils/nm-dispatcher $(nmlibdest)/45-mstpd ; \

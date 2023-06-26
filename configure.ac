@@ -66,10 +66,17 @@ AS_IF([test "x$with_bashcompletiondir" != "xdefault"],
 AC_ARG_WITH([systemdunitdir],
      [AS_HELP_STRING([--with-systemunitdir=DIR], [Directory for systemd unit files.])],,
      [with_systemdunitdir=default])
-AS_IF([test "x$with_systemdunitdir" = "xdefault"],
-     [AC_SUBST([systemdunitdir], [$($PKG_CONFIG --variable=systemdsystemunitdir systemd 2> /dev/null)])])
-AS_IF([test "x$with_systemdunitdir" != "xdefault"],
+AS_IF([test "x$with_systemdunitdir" = "xdefault"],[
+     def_systemdunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)
+
+     AS_IF([test "x$def_systemdunitdir" = "x"],
+   [AS_IF([test "x$with_systemdunitdir" = "xdefault"],
+    [AC_MSG_ERROR([systemd support requested but pkg-config unable to query systemd package])])
+    with_systemdunitdir=no],
+   [with_systemdunitdir="$def_systemdunitdir"])])
+AS_IF([test "x$with_systemdunitdir" != "xno"],
       [AC_SUBST([systemdunitdir], [$with_systemdunitdir])])
+AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$with_systemdunitdir" != "xno"])
 
 # Define PACKAGE_BUILD
 PACKAGE_BUILD=`git log --pretty=format:'%h' -n 1`
