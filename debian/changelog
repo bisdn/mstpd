@@ -1,3 +1,9 @@
+mstpd (0.1.0+bisdn5) unstable; urgency=medium
+
+  * brmon: do not try to read beyond the end of vlan messages
+
+ -- Jonas Gorski <jonas.gorski@bisdn.de> Thu Sep 7 14:32:47 2023 +0200
+
 mstpd (0.1.0+bisdn4) unstable; urgency=medium
 
   * bridge_track: only set ports to forwarding when the bridge is up
