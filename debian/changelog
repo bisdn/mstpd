@@ -1,3 +1,10 @@
+mstpd (0.1.0+bisdn6) unstable; urgency=medium
+
+  * netif_utils: fix speeds > 65G
+  * mstpctl-utils-functions.sh: fix shellcheck warnings
+
+ -- Jonas Gorski <jonas.gorski@bisdn.de> Thu Oct 10 9:57:32 2024 +0200
+
 mstpd (0.1.0+bisdn5) unstable; urgency=medium
 
   * brmon: do not try to read beyond the end of vlan messages

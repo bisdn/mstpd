@@ -1,6 +1,11 @@
 mstpd: Multiple Spanning Tree Protocol Daemon
 =============================================
 
+Version: 0.1.0+bisdn6
+- netif_utils: fix speeds > 65G
+- mstpctl-utils-functions.sh: fix shellcheck warnings
+  - Jonas Gorski <jonas.gorski@bisdn.de>
+
 Version: 0.1.0+bisdn5
 - brmon: do not try to read beyond the end of vlan messages
   - Jonas Gorski <jonas.gorski@bisdn.de>
