@@ -1,7 +1,7 @@
 Name:          mstpd
 Summary:       STP/RSTP/PVST+/MSTP Spanning Tree Protocol Daemon
 URL:           https://github.com/mstpd/mstpd
-Version:       0.1.0+bisdn5
+Version:       0.1.0+bisdn6
 Release:       1%{?dist}
 
 License:       GPLv2+
