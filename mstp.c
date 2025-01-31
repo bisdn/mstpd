@@ -528,7 +528,7 @@ void MSTP_IN_set_port_enable(port_t *prt, bool up, int speed, int duplex)
         br_state_machines_run(prt->bridge);
 }
 
-void MSTP_IN_one_second(bridge_t *br)
+void MSTP_IN_one_tick(bridge_t *br)
 {
     port_t *prt;
     tree_t *tree;
@@ -715,7 +715,7 @@ void MSTP_IN_get_cist_bridge_status(bridge_t *br, CIST_BridgeStatus *status)
     tree_t *cist = GET_CIST_TREE(br);
     assign(status->bridge_id, cist->BridgeIdentifier);
     assign(status->time_since_topology_change,
-           cist->time_since_topology_change);
+           cist->time_since_topology_change / TICK_HZ);
     assign(status->topology_change_count, cist->topology_change_count);
     status->topology_change = cist->topology_change;
     strncpy(status->topology_change_port, cist->topology_change_port,
@@ -746,7 +746,7 @@ void MSTP_IN_get_msti_bridge_status(tree_t *tree, MSTI_BridgeStatus *status)
 {
     assign(status->bridge_id, tree->BridgeIdentifier);
     assign(status->time_since_topology_change,
-           tree->time_since_topology_change);
+           tree->time_since_topology_change / TICK_HZ);
     assign(status->topology_change_count, tree->topology_change_count);
     status->topology_change = tree->topology_change;
     strncpy(status->topology_change_port, tree->topology_change_port,
@@ -1000,8 +1000,8 @@ void MSTP_IN_get_cist_port_status(port_t *prt, CIST_PortStatus *status)
 {
     per_tree_port_t *cist = GET_CIST_PTP_FROM_PORT(prt);
     /* 12.8.2.2.3 b) */
-    status->uptime = (signed int)((prt->bridge)->uptime)
-                     - (signed int)(cist->start_time);
+    status->uptime = ((signed int)((prt->bridge)->uptime)
+                     - (signed int)(cist->start_time)) / TICK_HZ;
     status->state = cist->state;
     assign(status->port_id, cist->portId);
     assign(status->admin_external_port_path_cost,
@@ -1054,8 +1054,8 @@ void MSTP_IN_get_cist_port_status(port_t *prt, CIST_PortStatus *status)
 void MSTP_IN_get_msti_port_status(per_tree_port_t *ptp,
                                   MSTI_PortStatus *status)
 {
-    status->uptime = (signed int)((ptp->port->bridge)->uptime)
-                     - (signed int)(ptp->start_time);
+    status->uptime = ((signed int)((ptp->port->bridge)->uptime)
+                     - (signed int)(ptp->start_time)) / TICK_HZ;
     status->state = ptp->state;
     assign(status->port_id, ptp->portId);
     assign(status->admin_internal_port_path_cost,
@@ -1813,7 +1813,7 @@ static void newTcWhile(per_tree_port_t *ptp)
     {
         per_tree_port_t *cist = GET_CIST_PTP_FROM_PORT(prt);
 
-        ptp->tcWhile = cist->portTimes.Hello_Time + 1;
+        ptp->tcWhile = (cist->portTimes.Hello_Time + 1) * TICK_HZ;
         set_TopologyChange(tree, true, prt);
 
         if(0 == ptp->MSTID)
@@ -1825,7 +1825,7 @@ static void newTcWhile(per_tree_port_t *ptp)
 
     times_t *times = &tree->rootTimes;
 
-    ptp->tcWhile = times->Max_Age + times->Forward_Delay;
+    ptp->tcWhile = (times->Max_Age + times->Forward_Delay) * TICK_HZ;
     set_TopologyChange(tree, true, prt);
 }
 
@@ -2180,7 +2180,7 @@ static void set_fdbFlush(per_tree_port_t *ptp)
         unsigned int FwdDelay = cist->designatedTimes.Forward_Delay;
         /* Initiate rapid ageing */
         MSTP_OUT_set_ageing_time(prt, FwdDelay);
-        assign(prt->rapidAgeingWhile, FwdDelay);
+        assign(prt->rapidAgeingWhile, FwdDelay * TICK_HZ);
         ptp->fdbFlush = false;
     }
 }
@@ -2561,7 +2561,7 @@ static void updtRcvdInfoWhile(per_tree_port_t *ptp)
     if((!prt->rcvdInternal && ((Message_Age + 1) <= Max_Age))
        || (prt->rcvdInternal && (ptp->portTimes.remainingHops > 1))
       )
-        ptp->rcvdInfoWhile = 3 * Hello_Time;
+        ptp->rcvdInfoWhile = (3 * Hello_Time * TICK_HZ);
     else
         ptp->rcvdInfoWhile = 0;
 }
@@ -2570,7 +2570,7 @@ static void updtbrAssuRcvdInfoWhile(port_t *prt)
 {
     per_tree_port_t *cist = GET_CIST_PTP_FROM_PORT(prt);
 
-    prt->brAssuRcvdInfoWhile = 3 * cist->portTimes.Hello_Time;
+    prt->brAssuRcvdInfoWhile = 3 * cist->portTimes.Hello_Time * TICK_HZ;
 }
 
 /* 13.26.24 updtRolesDisabledTree */
@@ -2885,7 +2885,7 @@ static bool PRSM_to_DISCARD(port_t *prt, bool dry_run)
     {
         return (prt->PRSM_state != PRSM_DISCARD)
                || prt->rcvdBpdu || prt->rcvdRSTP || prt->rcvdSTP
-               || (prt->edgeDelayWhile != prt->bridge->Migrate_Time)
+               || (prt->edgeDelayWhile != (prt->bridge->Migrate_Time * TICK_HZ))
                || clearAllRcvdMsgs(prt, dry_run);
     }
 
@@ -2895,7 +2895,7 @@ static bool PRSM_to_DISCARD(port_t *prt, bool dry_run)
     prt->rcvdRSTP = false;
     prt->rcvdSTP = false;
     clearAllRcvdMsgs(prt, false /* actual run */);
-    assign(prt->edgeDelayWhile, prt->bridge->Migrate_Time);
+    assign(prt->edgeDelayWhile, prt->bridge->Migrate_Time * TICK_HZ);
 
     /* No need to run, no one condition will be met
      * if(!begin)
@@ -2912,7 +2912,7 @@ static void PRSM_to_RECEIVE(port_t *prt)
     setRcvdMsgs(prt);
     prt->operEdge = false;
     prt->rcvdBpdu = false;
-    assign(prt->edgeDelayWhile, prt->bridge->Migrate_Time);
+    assign(prt->edgeDelayWhile, prt->bridge->Migrate_Time * TICK_HZ);
 
     /* No need to run, no one condition will be met
       PRSM_run(prt, false); */
@@ -2923,7 +2923,7 @@ static bool PRSM_run(port_t *prt, bool dry_run)
     per_tree_port_t *ptp;
     bool rcvdAnyMsg;
 
-    if((prt->rcvdBpdu || (prt->edgeDelayWhile != prt->bridge->Migrate_Time))
+    if((prt->rcvdBpdu || (prt->edgeDelayWhile != prt->bridge->Migrate_Time * TICK_HZ))
        && !prt->portEnabled)
     {
         return PRSM_to_DISCARD(prt, dry_run);
@@ -2972,7 +2972,7 @@ static void PPMSM_to_CHECKING_RSTP(port_t *prt/*, bool begin*/)
     bridge_t *br = prt->bridge;
     prt->mcheck = false;
     prt->sendRSTP = rstpVersion(br);
-    assign(prt->mdelayWhile, br->Migrate_Time);
+    assign(prt->mdelayWhile, br->Migrate_Time * TICK_HZ);
 
     /* No need to run, no one condition will be met
      * if(!begin)
@@ -2984,7 +2984,7 @@ static void PPMSM_to_SELECTING_STP(port_t *prt)
     prt->PPMSM_state = PPMSM_SELECTING_STP;
 
     prt->sendRSTP = false;
-    assign(prt->mdelayWhile, prt->bridge->Migrate_Time);
+    assign(prt->mdelayWhile, prt->bridge->Migrate_Time * TICK_HZ);
 
     PPMSM_run(prt, false /* actual run */);
 }
@@ -3006,7 +3006,7 @@ static bool PPMSM_run(port_t *prt, bool dry_run)
     switch(prt->PPMSM_state)
     {
         case PPMSM_CHECKING_RSTP:
-            if((prt->mdelayWhile != br->Migrate_Time)
+            if((prt->mdelayWhile != br->Migrate_Time * TICK_HZ)
                && !prt->portEnabled)
             {
                 if(dry_run) /* at least mdelayWhile will change */
@@ -3150,7 +3150,7 @@ static void PTSM_to_TRANSMIT_CONFIG(port_t *prt)
 
     prt->newInfo = false;
     txConfig(prt);
-    ++(prt->txCount);
+    prt->txCount += TICK_HZ;
     prt->tcAck = false;
 
     PTSM_run(prt, false /* actual run */);
@@ -3162,7 +3162,7 @@ static void PTSM_to_TRANSMIT_TCN(port_t *prt)
 
     prt->newInfo = false;
     txTcn(prt);
-    ++(prt->txCount);
+    prt->txCount += TICK_HZ;
 
     PTSM_run(prt, false /* actual run */);
 }
@@ -3174,7 +3174,7 @@ static void PTSM_to_TRANSMIT_RSTP(port_t *prt)
     prt->newInfo = false;
     prt->newInfoMsti = false;
     txMstp(prt);
-    ++(prt->txCount);
+    prt->txCount += TICK_HZ;
     prt->tcAck = false;
 
     PTSM_run(prt, false /* actual run */);
@@ -3214,7 +3214,7 @@ static void PTSM_to_IDLE(port_t *prt)
     prt->PTSM_state = PTSM_IDLE;
 
     per_tree_port_t *cist = GET_CIST_PTP_FROM_PORT(prt);
-    prt->helloWhen = cist->portTimes.Hello_Time;
+    prt->helloWhen = cist->portTimes.Hello_Time * TICK_HZ;
 
     PTSM_run(prt, false /* actual run */);
 }
@@ -3273,7 +3273,11 @@ static bool PTSM_run(port_t *prt, bool dry_run)
                 PTSM_to_TRANSMIT_PERIODIC(prt);
                 return false;
             }
-            if(!(prt->txCount < prt->bridge->Transmit_Hold_Count))
+
+            if ((prt->txCount % TICK_HZ) != 0)
+	        return false;
+
+            if(!(prt->txCount < (prt->bridge->Transmit_Hold_Count * TICK_HZ)))
                 return false;
 
             if(prt->bpduFilterPort)
@@ -3690,10 +3694,10 @@ static void PRTSM_to_INIT_PORT(per_tree_port_t *ptp/*, bool begin*/)
     ptp->reRoot = true;
     /* 13.25.6 */
     FwdDelay = cist->designatedTimes.Forward_Delay;
-    assign(ptp->rrWhile, FwdDelay);
+    assign(ptp->rrWhile, FwdDelay * TICK_HZ);
     /* 13.25.8 */
     MaxAge = cist->designatedTimes.Max_Age;
-    assign(ptp->fdWhile, MaxAge);
+    assign(ptp->fdWhile, MaxAge * TICK_HZ);
     assign(ptp->rbWhile, 0u);
 
     /* No need to check, as we assume begin = true here
@@ -3739,7 +3743,7 @@ static void PRTSM_to_DISABLED_PORT(per_tree_port_t *ptp, unsigned int MaxAge)
     PRTSM_LOG("");
     ptp->PRTSM_state = PRTSM_DISABLED_PORT;
 
-    assign(ptp->fdWhile, MaxAge);
+    assign(ptp->fdWhile, MaxAge * TICK_HZ);
     ptp->synced = true;
     assign(ptp->rrWhile, 0u);
     ptp->sync = false;
@@ -3813,7 +3817,7 @@ static void PRTSM_to_MASTER_LEARN(per_tree_port_t *ptp, unsigned int forwardDela
     ptp->PRTSM_state = PRTSM_MASTER_LEARN;
 
     ptp->learn = true;
-    assign(ptp->fdWhile, forwardDelay);
+    assign(ptp->fdWhile, forwardDelay * TICK_HZ);
 
     PRTSM_runr(ptp, true, false /* actual run */);
 }
@@ -3826,7 +3830,7 @@ static void PRTSM_to_MASTER_DISCARD(per_tree_port_t *ptp, unsigned int forwardDe
     ptp->learn = false;
     ptp->forward = false;
     ptp->disputed = false;
-    assign(ptp->fdWhile, forwardDelay);
+    assign(ptp->fdWhile, forwardDelay * TICK_HZ);
 
     PRTSM_runr(ptp, true, false /* actual run */);
 }
@@ -3909,7 +3913,7 @@ static void PRTSM_to_ROOT_LEARN(per_tree_port_t *ptp, unsigned int forwardDelay)
     PRTSM_LOG("");
     ptp->PRTSM_state = PRTSM_ROOT_LEARN;
 
-    assign(ptp->fdWhile, forwardDelay);
+    assign(ptp->fdWhile, forwardDelay * TICK_HZ);
     ptp->learn = true;
 
     PRTSM_runr(ptp, true, false /* actual run */);
@@ -3931,7 +3935,7 @@ static void PRTSM_to_ROOT_PORT(per_tree_port_t *ptp, unsigned int FwdDelay)
     ptp->PRTSM_state = PRTSM_ROOT_PORT;
 
     ptp->role = roleRoot;
-    assign(ptp->rrWhile, FwdDelay);
+    assign(ptp->rrWhile, FwdDelay * TICK_HZ);
 
     PRTSM_runr(ptp, true, false /* actual run */);
 }
@@ -3955,7 +3959,7 @@ static void PRTSM_to_DESIGNATED_PROPOSE(per_tree_port_t *ptp)
         unsigned int EdgeDelay = prt->operPointToPointMAC ?
                                    prt->bridge->Migrate_Time
                                  : MaxAge;
-        assign(prt->edgeDelayWhile, EdgeDelay);
+        assign(prt->edgeDelayWhile, EdgeDelay * TICK_HZ);
         prt->newInfo = true;
     }
     else
@@ -4022,7 +4026,7 @@ static void PRTSM_to_DESIGNATED_LEARN(per_tree_port_t *ptp, unsigned int forward
     ptp->PRTSM_state = PRTSM_DESIGNATED_LEARN;
 
     ptp->learn = true;
-    assign(ptp->fdWhile, forwardDelay);
+    assign(ptp->fdWhile, forwardDelay * TICK_HZ);
 
     PRTSM_runr(ptp, true, false /* actual run */);
 }
@@ -4035,7 +4039,7 @@ static void PRTSM_to_DESIGNATED_DISCARD(per_tree_port_t *ptp, unsigned int forwa
     ptp->learn = false;
     ptp->forward = false;
     ptp->disputed = false;
-    assign(ptp->fdWhile, forwardDelay);
+    assign(ptp->fdWhile, forwardDelay * TICK_HZ);
 
     PRTSM_runr(ptp, true, false /* actual run */);
 }
@@ -4069,7 +4073,7 @@ static void PRTSM_to_BACKUP_PORT(per_tree_port_t *ptp, unsigned int HelloTime)
     PRTSM_LOG("");
     ptp->PRTSM_state = PRTSM_BACKUP_PORT;
 
-    assign(ptp->rbWhile, 2 * HelloTime);
+    assign(ptp->rbWhile, 2 * HelloTime * TICK_HZ);
 
     PRTSM_runr(ptp, true, false /* actual run */);
 }
@@ -4107,7 +4111,7 @@ static void PRTSM_to_ALTERNATE_PORT(per_tree_port_t *ptp, unsigned int forwardDe
     PRTSM_LOG("");
     ptp->PRTSM_state = PRTSM_ALTERNATE_PORT;
 
-    assign(ptp->fdWhile, forwardDelay);
+    assign(ptp->fdWhile, forwardDelay * TICK_HZ);
     ptp->synced = true;
     assign(ptp->rrWhile, 0u);
     ptp->sync = false;
@@ -4239,7 +4243,7 @@ static bool PRTSM_runr(per_tree_port_t *ptp, bool recursive_call, bool dry_run)
         case PRTSM_DISABLED_PORT:
             if(ptp->selected && !ptp->updtInfo
                && (ptp->sync || ptp->reRoot || !ptp->synced
-                   || (ptp->fdWhile != MaxAge))
+                   || (ptp->fdWhile != (MaxAge * TICK_HZ)))
               )
             {
                 if(dry_run) /* one of (sync,reRoot,synced,fdWhile) will change */
@@ -4418,7 +4422,7 @@ static bool PRTSM_runr(per_tree_port_t *ptp, bool recursive_call, bool dry_run)
                 PRTSM_to_REROOTED(ptp);
                 return false;
             }
-            if(ptp->rrWhile != FwdDelay)
+            if(ptp->rrWhile != (FwdDelay * TICK_HZ))
             {
                 if(dry_run) /* state change */
                     return true;
@@ -4553,14 +4557,14 @@ static bool PRTSM_runr(per_tree_port_t *ptp, bool recursive_call, bool dry_run)
                 PRTSM_to_ALTERNATE_PROPOSED(ptp);
                 return false;
             }
-            if((ptp->rbWhile != 2 * HelloTime) && (roleBackup == ptp->role))
+            if((ptp->rbWhile != (2 * HelloTime * TICK_HZ)) && (roleBackup == ptp->role))
             {
                 if(dry_run) /* state change */
                     return true;
                 PRTSM_to_BACKUP_PORT(ptp, HelloTime);
                 return false;
             }
-            if((ptp->fdWhile != forwardDelay) || ptp->sync || ptp->reRoot
+            if((ptp->fdWhile != (forwardDelay * TICK_HZ)) || ptp->sync || ptp->reRoot
                || !ptp->synced)
             {
                 if(dry_run) /* state change */

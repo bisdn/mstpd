@@ -96,16 +96,23 @@ static inline int time_diff(struct timespec *second, struct timespec *first)
             + (second->tv_nsec - first->tv_nsec) / 1000000;
 }
 
+static inline void add_one_tick(struct timespec *timeout)
+{
+
+    timeout->tv_sec += (TICK_MS / 1000);
+    timeout->tv_nsec += (TICK_MS % 1000) * 1000000;
+}
+
 static inline void run_timeouts(void)
 {
-    bridge_one_second();
-    ++(nexttimeout.tv_sec);
+    bridge_one_tick();
+    add_one_tick(&nexttimeout);
 }
 
 int epoll_main_loop(volatile bool *quit)
 {
     clock_gettime(CLOCK_MONOTONIC, &nexttimeout);
-    ++(nexttimeout.tv_sec);
+    add_one_tick(&nexttimeout);
 #define EV_SIZE 8
     struct epoll_event ev[EV_SIZE];
 
@@ -117,17 +124,18 @@ int epoll_main_loop(volatile bool *quit)
         struct timespec tv;
         clock_gettime(CLOCK_MONOTONIC, &tv);
         timeout = time_diff(&nexttimeout, &tv);
-        if(timeout < 0 || timeout > 1000)
+        if(timeout < 0 || timeout > TICK_MS)
         {
             run_timeouts();
             /*
              * Check if system time has changed.
              */
-            if(timeout < -4000 || timeout > 1000)
+            if(timeout < -4000 || timeout > TICK_MS)
             {
                 /* Most probably, system time has changed */
                 nexttimeout.tv_nsec = tv.tv_nsec;
-                nexttimeout.tv_sec = tv.tv_sec + 1;
+                nexttimeout.tv_sec = tv.tv_sec;
+                add_one_tick(&nexttimeout);
             }
             timeout = 0;
         }

@@ -16,6 +16,9 @@
 #include <time.h>
 #include <sys/time.h>
 
+#define TICK_HZ		10
+#define TICK_MS		(1000 / (TICK_HZ))
+
 #if HAVE_STRUCT_TIMESPEC
 // Nothing
 #else

@@ -157,11 +157,11 @@ static bool delete_br_byindex(int if_index)
     return true;
 }
 
-void bridge_one_second(void)
+void bridge_one_tick(void)
 {
     bridge_t *br;
     list_for_each_entry(br, &bridges, list)
-        MSTP_IN_one_second(br);
+        MSTP_IN_one_tick(br);
 }
 
 /* New MAC address is stored in addr, which also holds the old value on entry.

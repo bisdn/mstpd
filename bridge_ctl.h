@@ -85,6 +85,6 @@ int bridge_notify(int br_index, int if_index, bool newlink, unsigned flags);
 
 void bridge_bpdu_rcv(int ifindex, const unsigned char *data, int len);
 
-void bridge_one_second(void);
+void bridge_one_tick(void);
 
 #endif /* BRIDGE_CTL_H */
