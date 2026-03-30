@@ -37,6 +37,7 @@
 
 #include <config.h>
 
+#include <stdint.h>
 #include <string.h>
 #include <netinet/in.h>
 #include <linux/if_bridge.h>
@@ -833,18 +834,18 @@ int MSTP_IN_set_cist_bridge_config(bridge_t *br, CIST_BridgeConfig *cfg)
 
     if(cfg->set_max_hops)
     {
-        if((6 > cfg->max_hops) || (40 < cfg->max_hops))
+        if((6 > cfg->max_hops) || (100 < cfg->max_hops))
         {
-            ERROR_BRNAME(br, "Bridge Max Hops must be between 6 and 40");
+            ERROR_BRNAME(br, "Bridge Max Hops must be between 6 and 100");
             r = -1;
         }
     }
 
     if(cfg->set_bridge_hello_time)
     {
-        if((1 > cfg->bridge_hello_time) || (10 < cfg->bridge_hello_time))
+        if((2 != cfg->bridge_hello_time))
         {
-            ERROR_BRNAME(br, "Bridge Hello Time must be between 1 and 10");
+            ERROR_BRNAME(br, "Bridge Hello Time must be 2");
             r = -1;
         }
     }
@@ -901,17 +902,6 @@ int MSTP_IN_set_cist_bridge_config(bridge_t *br, CIST_BridgeConfig *cfg)
         if(cfg->max_hops != br->MaxHops)
         {
             assign(br->MaxHops, cfg->max_hops);
-            changed = changedBridgeTimes = true;
-        }
-    }
-
-    if(cfg->set_bridge_hello_time)
-    {
-        if(cfg->bridge_hello_time != br->Hello_Time)
-        {
-            INFO_BRNAME(br, "bridge hello_time new=%hhu, old=%hhu",
-                        cfg->bridge_hello_time, br->Hello_Time);
-            assign(br->Hello_Time, cfg->bridge_hello_time);
             changed = changedBridgeTimes = true;
         }
     }
@@ -1093,6 +1083,16 @@ int MSTP_IN_set_cist_port_config(port_t *prt, CIST_PortConfig *cfg)
         }
     }
 
+    if(cfg->set_admin_external_port_path_cost)
+    {
+        if(MAX_PATH_COST < cfg->admin_external_port_path_cost)
+        {
+            ERROR_PRTNAME(br, prt,
+                          "Port Path Cost must be between 0 and 200000000");
+            return -1;
+        }
+    }
+
     /* Secondly, do set */
     changed = false;
 
@@ -1242,6 +1242,20 @@ int MSTP_IN_set_msti_port_config(per_tree_port_t *ptp, MSTI_PortConfig *cfg)
                            "Port Priority must be between 0 and 15");
             return -1;
         }
+    }
+
+    if(cfg->set_admin_internal_port_path_cost)
+    {
+        if (MAX_PATH_COST < cfg->admin_internal_port_path_cost)
+        {
+            ERROR_MSTINAME(br, prt, ptp,
+                           "Port Path Cost must be between 0 and 200000000");
+            return -1;
+        }
+    }
+
+    if(cfg->set_port_priority)
+    {
         valuePri = cfg->port_priority << 4;
         if(GET_PRIORITY_FROM_IDENTIFIER(ptp->portId) != valuePri)
         {
@@ -2601,6 +2615,7 @@ static void updtRolesTree(tree_t *tree)
     port_priority_vector_t root_path_priority;
     bridge_identifier_t prevRRootID = tree->rootPriority.RRootID;
     __be32 prevExtRootPathCost = tree->rootPriority.ExtRootPathCost;
+    __u32 newRootPathCost;
     bool cist = (0 == tree->MSTID);
 
     /* a), b) Select new root priority vector = {rootPriority, rootPortId} */
@@ -2624,18 +2639,28 @@ static void updtRolesTree(tree_t *tree)
             root_path_priority = ptp->portPriority;
             if(prt->rcvdInternal)
             {
+                newRootPathCost = __be32_to_cpu(root_path_priority.IntRootPathCost);
+
+                if(newRootPathCost > (UINT32_MAX - ptp->InternalPortPathCost))
+                    newRootPathCost = UINT32_MAX;
+                else
+                    newRootPathCost += ptp->InternalPortPathCost;
+
                 assign(root_path_priority.IntRootPathCost,
-                       __cpu_to_be32(__be32_to_cpu(root_path_priority.IntRootPathCost)
-                                     + ptp->InternalPortPathCost)
-                      );
+                       __cpu_to_be32(newRootPathCost));
             }
             else if(cist) /* Yes, this check might be superfluous,
                            * but I want to be on the safe side */
             {
+                newRootPathCost = __be32_to_cpu(root_path_priority.ExtRootPathCost);
+
+                if(newRootPathCost > (UINT32_MAX - prt->ExternalPortPathCost))
+                    newRootPathCost = UINT32_MAX;
+                else
+                    newRootPathCost += prt->ExternalPortPathCost;
+
                 assign(root_path_priority.ExtRootPathCost,
-                       __cpu_to_be32(__be32_to_cpu(root_path_priority.ExtRootPathCost)
-                                     + prt->ExternalPortPathCost)
-                      );
+                       __be32_to_cpu(newRootPathCost));
                 assign(root_path_priority.RRootID, tree->BridgeIdentifier);
                 assign(root_path_priority.IntRootPathCost,
                        __constant_cpu_to_be32(0));
@@ -4814,7 +4839,8 @@ static bool TCSM_run(per_tree_port_t *ptp, bool dry_run)
                 TCSM_to_DETECTED(ptp);
                 return false;
             }
-            if(ptp->rcvdTc || prt->rcvdTcn || prt->rcvdTcAck || ptp->tcProp)
+            if(ptp->rcvdTc || ptp->tcProp
+               || ((0 == ptp->MSTID) && (prt->rcvdTcn || prt->rcvdTcAck)))
             {
                 return TCSM_to_LEARNING(ptp, dry_run);
             }
@@ -4852,7 +4878,7 @@ static bool TCSM_run(per_tree_port_t *ptp, bool dry_run)
                 TCSM_to_LEARNING(ptp, false /* actual run */);
                 return false;
             }
-            if(prt->rcvdTcn)
+            if((0 == ptp->MSTID) && prt->rcvdTcn)
             {
                 if(dry_run) /* state change */
                     return true;
@@ -4873,7 +4899,7 @@ static bool TCSM_run(per_tree_port_t *ptp, bool dry_run)
                 TCSM_to_PROPAGATING(ptp);
                 return false;
             }
-            if(prt->rcvdTcAck)
+            if((0 == ptp->MSTID) && prt->rcvdTcAck)
             {
                 if(dry_run) /* state change */
                     return true;
